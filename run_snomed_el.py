@@ -89,7 +89,7 @@ controller = ControllerAgent(
 def main():
     print("Loading SNOMED-CT EL dataset...")
 
-    df = pd.read_csv(f"{DATA_DIR}/train_df.csv").sample(frac=0.0010, random_state=1)
+    df = pd.read_csv(f"{DATA_DIR}/train_df.csv").sample(frac=0.010, random_state=1)
 
     # predictions = []
 

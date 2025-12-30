@@ -15,7 +15,8 @@ class DecisionAgentLLM:
             return None
 
         # Remove markdown fences
-        text = re.sub(r"```json|```", "", text).strip()
+        text = text.strip()
+        text = text.replace("```json", "").replace("```", "").strip()
 
         # Try direct parse
         try:
@@ -87,7 +88,7 @@ class DecisionAgentLLM:
             ],
             "temperature": 0,
             "top_p": 0.9,
-            "max_tokens": 4000,
+            "max_tokens": 4098,
         }
 
         try:
