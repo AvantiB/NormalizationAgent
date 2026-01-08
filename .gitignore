@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+
+# Cache / data
+cache/
+*.parquet
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Env (if present)
+.env
+.venv/
