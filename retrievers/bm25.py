@@ -43,6 +43,7 @@ class BM25Retriever:
         """
 
         self.top_k = top_k
+        self.name = "bm25"
         self.minimum_score = minimum_score
         self.concepts = pd.read_parquet(concept_path).reset_index(drop=True)
 
@@ -77,7 +78,7 @@ class BM25Retriever:
 
         print(f"[BM25Retriever] Indexed {len(self.corpus)} concepts.")
 
-    def retrieve(self, text: str, context: str = "") -> List[Dict]:
+    def retrieve(self, text: str) -> List[Dict]:
         """
         Retrieve BM25 candidates for an entity.
 
@@ -115,6 +116,8 @@ class BM25Retriever:
                 "concept_id": str(row["concept_id"]),
                 "concept_name": row["concept_name"],
                 "hierarchy": row.get("hierarchy"),
+                "parent_name":row["parent_name"],
+                "parent_hierarchy":row["parent_hierarchy"],
                 "score": float(score),
                 "source": "bm25",
             })

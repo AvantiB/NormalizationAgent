@@ -21,6 +21,7 @@ class SapBERTFaissRetriever(BaseRetriever):
         super().__init__(name="sapbert_faiss")
 
         self.top_k = top_k
+        self.name = "sapbert_faiss"
         self.concepts = pd.read_parquet(concept_path)
         self.embeddings = np.load(emb_path).astype("float32")
         self.index = faiss.read_index(faiss_path)
@@ -28,7 +29,7 @@ class SapBERTFaissRetriever(BaseRetriever):
         self.minimum_score = minimum_score
 
 
-    def retrieve(self, text, context=None, top_k=None):
+    def retrieve(self, text, top_k=None):
         # query = text if not context else f"{text} {context}"
         query = normalize_text(text)
 
@@ -47,6 +48,8 @@ class SapBERTFaissRetriever(BaseRetriever):
                     "concept_id": str(row["concept_id"]),
                     "concept_name": row["concept_name"],
                     "hierarchy": row.get("hierarchy"),
+                    "parent_name":row["parent_name"],
+                    "parent_hierarchy":row["parent_hierarchy"],
                     "score": score,
                     "source": self.name,
                 })

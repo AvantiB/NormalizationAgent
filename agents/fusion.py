@@ -7,7 +7,7 @@ from collections import defaultdict
 @dataclass
 class FusionConfig:
     # final candidates passed to LLM
-    top_k_final: int = 20
+    top_k_final: int = 32
 
     # per-retriever cap before fusion (prevents huge unions)
     per_source_cap: int = 32
@@ -144,6 +144,8 @@ class CandidateFusionAgent:
                 "concept_id": cid,
                 "concept_name": base.get("concept_name"),
                 "hierarchy": base.get("hierarchy"),
+                "parent_name":base.get("parent_name"),
+                "parent_hierarchy":base.get("parent_hierarchy"),
                 "source": "fused",
                 "fused_score": float(rrf),
                 "support": int(support_count.get(cid, 0)),

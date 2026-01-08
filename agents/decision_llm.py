@@ -16,6 +16,9 @@ class DecisionAgentLLM:
 
         # Remove markdown fences
         text = text.strip()
+        # Remove special unused tokens (model artifacts)
+        text = re.sub(r"<unused\d+>", "", text)
+        # Remove markdown fences
         text = text.replace("```json", "").replace("```", "").strip()
 
         # Try direct parse
@@ -26,10 +29,10 @@ class DecisionAgentLLM:
 
         # Fallback: extract first JSON object
         try:
-            match = re.search(r"\{[\s\S]*?\}", text)
-            if not match:
+            matches = re.findall(r"\{[\s\S]*?\}", text)
+            if not matches:
                 return None
-            return json.loads(match.group(0))
+            return json.loads(matches[-1])
         except json.JSONDecodeError:
             return None
 
@@ -37,10 +40,21 @@ class DecisionAgentLLM:
     def decide(self, entity: Dict[str, Any], candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Decide the best concept for a SINGLE entity.
+
+        Returns:
+        {
+            "status": "confident" | "uncertain" | "hard_fail",
+            "concept_id": str | None,
+            "concept_name": str | None,
+            "hierarchy": str | None,
+            "confidence": float,
+            "source": str
+        }
         """
 
         if not candidates:
             return {
+                "status": "hard_fail",
                 "concept_id": None,
                 "concept_name": None,
                 "hierarchy": None,
@@ -60,8 +74,9 @@ class DecisionAgentLLM:
             "- Select the concept without extra modifiers or additional information **unless those modifiers are explicitly mentioned in the text**. For example, if the entity is 'rigors' and the candidates are 'Rigor (finding)' and 'Shivering or rigors (finding)', select 'Rigor (finding)'.\n" 
             "- Select concept with specifications when explicitly mentioned in the entity. For example, if the entity is 'colonic diverticula', you must select the concept that specifically mentions 'Divertoculosis of **Colon** (finding)' \n"
             "- Select the concept with appropriate 'hierarchy' or semantic type based on the entity context.\n"
-            "- If none are acceptable, return null.\n\n"
-            "Think step-by-step and be very careful in your selection."
+            "- If none are acceptable, return null and low confidence. Do not guess.\n\n"
+            "Do not include reasoning, analysis, or explanations in your response. Do NOT include markdown.\n"
+            "**Return ONLY the final JSON object and nothing else.**\n"
         )
 
         user_prompt = (
@@ -71,7 +86,7 @@ class DecisionAgentLLM:
             "Retrieved candidate concepts:\n"
             + json.dumps(candidates, ensure_ascii=False, indent=2)
             + "\n\n"
-            "Return STRICTLY valid JSON:\n"
+            "Return STRICTLY ONLY valid JSON and nothing else:\n"
             "{\n"
             "  \"concept_id\": \"...\" or null,\n"
             "  \"concept_name\": \"...\" or null,\n"
@@ -99,37 +114,41 @@ class DecisionAgentLLM:
         except Exception as e:
             print("LLM error:", e)
             return {
-                "concept_id": None,
-                "concept_name": None,
-                "hierarchy": None,
-                "confidence": 0.0,
-                "source": "llm_error"
-            }
+                    "status": "hard_fail",
+                    "concept_id": None,
+                    "concept_name": None,
+                    "hierarchy": None,
+                    "confidence": 0.0,
+                    "source": "llm_error"
+                }
 
         parsed = self._safe_json_loads(content)
 
         if not parsed:
             print("LLM JSON parse failure")
-            print("RAW OUTPUT:", content[:800])
+            print("RAW OUTPUT:", content)
             return {
-                "concept_id": None,
-                "concept_name": None,
-                "hierarchy": None,
-                "confidence": 0.0,
-                "source": "parse_failure",
-            }
+                    "status": "uncertain",
+                    "concept_id": None,
+                    "concept_name": None,
+                    "hierarchy": None,
+                    "confidence": 0.0,
+                    "source": "parse_failure",
+                }
 
         # Guardrail: ensure concept_id is from candidates
         cid = parsed.get("concept_id")
         if cid is not None and cid not in allowed_ids:
             print("LLM hallucinated concept_id:", cid)
             return {
-                "concept_id": None,
-                "concept_name": None,
-                "hierarchy": None,
-                "confidence": 0.0,
-                "source": "llm_hallucination",
-            }
+                    "status": "uncertain",
+                    "concept_id": None,
+                    "concept_name": None,
+                    "hierarchy": None,
+                    "confidence": 0.0,
+                    "source": "llm_hallucination",
+                }
 
+        parsed["status"] = "confident"
         parsed["source"] = "llm_decision"
         return parsed
